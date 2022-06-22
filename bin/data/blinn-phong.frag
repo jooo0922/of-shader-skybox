@@ -9,6 +9,8 @@ uniform sampler2D diffuseTex; // 디퓨즈 라이팅 계산에 사용할 텍스�
 uniform sampler2D specTex; // 스펙큘러 라이팅 계산에 사용할 텍스쳐를 담는 변수
 uniform sampler2D nrmTex; // 노말 매핑에 사용할 노말맵 텍스쳐를 담는 변수
 
+uniform samplerCube envMap; // 환경광 반사를 물 셰이더에 적용하기 위해 필요한 큐브맵(환경맵)을 전달받는 유니폼 변수
+
 in vec3 fragNrm; // 버텍스 셰이더에서 받아온 shield 모델의 (월드공간) 노멀벡터가 보간되어 들어온 값
 in vec3 fragWorldPos; // 버텍스 셰이더에서 받아온 shield 모델의 월드공간 위치 좌표가 보간되어 들어온 값
 in vec2 fragUV; // 라이팅 계산에 사용할 텍스쳐들을 샘플링하기 위해 shield 모델의 버텍스의 uv좌표들을 보간하여 들어온 값
@@ -30,17 +32,24 @@ void main(){
 
   vec3 viewDir = normalize(cameraPos - fragWorldPos); // 카메라의 월드공간 좌표 - 각 프래그먼트 월드공간 좌표를 빼서 각 프래그먼트 -> 카메라 방향의 벡터인 뷰 벡터 계산
 
+  // 방패는 물이나 거울과 달리 자신의 고유 색상을 갖기 때문에, 큐브맵의 텍셀값을 그대로 보여주면 안되고, 그래서 계산이 더 까다로움
+  // 이처럼 방패같은 불투명 재질에 큐브맵 반사를 어떻게 더할 것인지는 취향의 문제에 가까우며, 이를 위해 일반적으로 사용하는 계산 공식은
+  // c++ 에서 가져온 조명색상인 lightCol 과 합쳐서 계산하는 방식을 사용함.
+  vec3 envSample = texture(envMap, reflect(-viewDir, normal)).xyz; // 큐브맵 텍스쳐로부터 방향벡터를 사용해 샘플링한 텍셀값
+  vec3 sceneLight = mix(lightCol, envSample + lightCol * 0.5, 0.5); // lightCol 을 대신해서 사용할, 환경맵 반사가 반영된 sceneLight 변수 계산
+  // 이때에도, 환경맵 반사의 텍셀값이 너무 많이 반영되지는 않도록 공식을 구성한 것 같음. 물처럼 100% 반사되는 재질이 아니기 때문에...
+
   // Blinn-Phong 공식에서의 스펙큘러 라이팅 계산
   vec3 halfVec = normalize(viewDir + lightDir); // 뷰 벡터와 조명벡터 사이의 하프벡터를 구함
   float specAmt = max(0.0, dot(halfVec, normal)); // 하프벡터와 노멀벡터의 내적값을 구한 뒤, max() 함수로 음수값 제거
   float specBright = pow(specAmt, 2.0); // 퐁 반사모델에서와 동일한 스펙큘러 하이라이트를 얻으려면, 퐁 반사모델에서 사용했던 광택값의 2~4배 값을 거듭제곱해야 함. 따라서 0.5의 4배인 2를 광택값으로 사용함.
-  vec3 specCol = texture(specTex, fragUV).x * lightCol * specBright; // c++ 에서 전달해준 스펙큘러 하이라이트 색상 대신, 스펙큘러 맵에서 샘플링한 텍셀값을 사용할거임. 
+  vec3 specCol = texture(specTex, fragUV).x * sceneLight * specBright; // c++ 에서 전달해준 스펙큘러 하이라이트 색상 대신, 스펙큘러 맵에서 샘플링한 텍셀값을 사용할거임. 
   // 스펙큘러 맵은 흑백이므로, 텍셀값의 r채널 하나만으로 스칼라배를 해줘도 무방함.
 
   // 디퓨즈 라이팅 계산 (노멀벡터와 조명벡터를 내적)
   float diffAmt = max(0.0, dot(normal, lightDir)); // 정규화된 노멀벡터와 조명벡터의 내적값을 구한 뒤, max() 함수로 음수인 내적값 제거.
   vec3 meshCol = texture(diffuseTex, fragUV).xyz; // 물체의 원색상은 c++ 에서 전달해준 색상값 대신, 디퓨즈 텍스쳐에서 샘플링한 텍셀값을 사용할거임.
-  vec3 diffCol = meshCol * lightCol * diffAmt; // '물체의 원색상 * 조명색상 * 디퓨즈 라이트값' 을 곱해 디퓨즈 라이트 색상값 결정
+  vec3 diffCol = meshCol * sceneLight * diffAmt; // '물체의 원색상 * 조명색상 * 디퓨즈 라이트값' 을 곱해 디퓨즈 라이트 색상값 결정
 
   // 앰비언트 라이트 계산 (앰비언트 라이트 색상값과 물체의 원색상을 곱함)
   vec3 ambient = ambientCol * meshCol; // 물체의 원 색상과 다른 쌩뚱맞은 색이 나오면 안되어서 물체의 원 색상을 곱해주는 것

@@ -104,16 +104,14 @@ void ofApp::setup(){
     nrmTex.load("shield_normal.png"); // shieldMesh 의 조명계산에서 노말맵으로 사용할 텍스쳐 로드
     
     // 커스텀 큐브맵 클래스를 활용해서 큐브맵 텍스쳐를 로드함. (이때, ofxEasyCubemap.cpp 의 load 함수가 받는 텍스쳐 순서를 잘 보고 전달할 것.)
-    cubemap.load("cube_front.jpg", "cube_back.jpg",
-            "cube_right.jpg", "cube_left.jpg",
-            "cube_top.jpg", "cube_bottom.jpg");
+//    cubemap.load("cube_front.jpg", "cube_back.jpg",
+//            "cube_right.jpg", "cube_left.jpg",
+//            "cube_top.jpg", "cube_bottom.jpg");
         
     // 2번째 큐브맵 텍스쳐를 로드하여 사용할 시 주석을 풀고 사용하면 됨.
-    /*
     cubemap.load("cube2_front.jpg", "cube2_back.jpg",
             "cube2_right.jpg", "cube2_left.jpg",
             "cube2_top.jpg", "cube2_bottom.jpg");
-    */
 }
 
 //--------------------------------------------------------------
@@ -162,6 +160,7 @@ void ofApp::drawWater(DirectionalLight& dirLight, glm::mat4& proj, glm::mat4& vi
     shd.setUniformMatrix3f("normalMatrix", normalMatrix); // 노말행렬을 버텍스 셰이더 유니폼 변수로 전송
     shd.setUniform3f("meshSpecCol", glm::vec3(1, 1, 1)); // 스펙큘러 색상을 흰색으로 지정하여 유니폼 변수로 전송
     shd.setUniformTexture("normTex", waterNrm, 0); // 노말 매핑에 사용할 텍스쳐 유니폼 변수로 전송
+    shd.setUniformTexture("envMap", cubemap.getTexture(), 1); // 환경맵 반사를 적용하기 위해 사용할 큐브맵 텍스쳐 유니폼 변수로 전송
     shd.setUniform1f("time", t); // uv 스크롤링에 사용할 시간값 유니폼 변수로 전송
     
     shd.setUniform3f("ambientCol", glm::vec3(0.1, 0.1, 0.1)); // 환경광으로 사용할 앰비언트 라이트 색상값을 유니폼 변수로 전송.
@@ -220,6 +219,7 @@ void ofApp::drawShield(DirectionalLight& dirLight, glm::mat4& proj, glm::mat4& v
     shd.setUniformTexture("diffuseTex", diffuseTex, 0); // 디퓨즈 라이팅 계산에 사용할 텍스쳐 유니폼 변수로 전송
     shd.setUniformTexture("specTex", specTex, 1); // 스펙큘러 라이팅 계산에 사용할 텍스쳐 유니폼 변수로 전송
     shd.setUniformTexture("nrmTex", nrmTex, 2); // 노말 매핑에 사용할 텍스쳐 유니폼 변수로 전송
+    shd.setUniformTexture("envMap", cubemap.getTexture(), 3); // 환경맵 반사를 적용하기 위해 사용할 큐브맵 텍스쳐 유니폼 변수로 전송
     
     shd.setUniform3f("ambientCol", glm::vec3(0.1, 0.1, 0.1)); // 배경색과 동일한 앰비언트 라이트 색상값을 유니폼 변수로 전송.
     shd.setUniform3f("lightDir", getLightDirection(dirLight)); // 조명벡터를 음수화하여 뒤집어주고, 다시 정규화하여 길이를 1로 맞춘 뒤, 유니폼 변수로 전송
